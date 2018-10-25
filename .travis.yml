@@ -15,7 +15,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-6
-            - boost1.68
+            - boost1.67
     - env: COMPILER=g++-6 BUILD=Release STANDARD=14
       compiler: gcc
       addons:
@@ -26,7 +26,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-6
-            - boost1.68
+            - boost1.67
 script:
 - cmake .
 - cmake --build .
