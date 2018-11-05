@@ -8,7 +8,7 @@
 namespace  {
     constexpr const char*   POSITIVE_MARK     = "OK\n";
     constexpr const char*   ERROR_MARK        = "ERR";
-    constexpr const char*   ERR_WRONG_FORMAT  = "ERR WRONG FORMAT";
+    constexpr const char*   ERR_WRONG_FORMAT  = "ERR WRONG FORMAT\n";
     constexpr const char*   EMPTY_RESULT      = "";
     constexpr int           THREAD_NUMBER     = 5;
     constexpr int           MSG_MAX_LENGTH    = 4;
@@ -176,48 +176,62 @@ bool DataBase::parse(std::vector<std::string> data, size_t id)
         std::unique_lock<std::mutex> lck(m_dataMutex);
         *(std::next(m_contexts.begin(), static_cast<long>(id))) = POSITIVE_MARK;
 
-        if(data.size() > MSG_MAX_LENGTH) {
+        if(data.size() == 0) {
+            return true;
+        } else if (data.size() > MSG_MAX_LENGTH) {
             *(std::next(m_contexts.begin(), static_cast<long>(id))) = ERR_WRONG_FORMAT;
             return false;
         }
     }
 
-    if(data.at(0) == "INSERT" && isValidIndex(data.at(2))) {
-        int index = std::stoi(data.at(2));
-        if(data.at(1) == "A") {
-            std::unique_lock<std::mutex> lck(m_dataMutex);
-            auto it = m_tableA.emplace(index, data.at(3));
-            if(!it.second) {
-                *(std::next(m_contexts.begin(), static_cast<long>(id))) = errorDuplicateData(data.at(2));
+    if(data.at(0) == "INSERT") {
+        if((data.size() == 4) && isValidIndex(data.at(2))) {
+            int index = std::stoi(data.at(2));
+            if(data.at(1) == "A") {
+                std::unique_lock<std::mutex> lck(m_dataMutex);
+                auto it = m_tableA.emplace(index, data.at(3));
+                if(!it.second) {
+                    *(std::next(m_contexts.begin(), static_cast<long>(id))) = errorDuplicateData(data.at(2));
+                    return false;
+                }
+            }
+            else if(data.at(1) == "B") {
+                std::unique_lock<std::mutex> lck(m_dataMutex);
+                auto it = m_tableB.emplace(index, data.at(3));
+                if(!it.second) {
+                    *(std::next(m_contexts.begin(), static_cast<long>(id))) = errorDuplicateData(data.at(2));
+                    return false;
+                }
+            }
+            else {
+                std::unique_lock<std::mutex> lck(m_dataMutex);
+                *(std::next(m_contexts.begin(), static_cast<long>(id))) = errorMsgNoTable(data.at(1));
                 return false;
             }
-        }
-        else if(data.at(1) == "B") {
+        } else {
             std::unique_lock<std::mutex> lck(m_dataMutex);
-            auto it = m_tableB.emplace(index, data.at(3));
-            if(!it.second) {
-                *(std::next(m_contexts.begin(), static_cast<long>(id))) = errorDuplicateData(data.at(2));
-                return false;
-            }
-        }
-        else {
-            std::unique_lock<std::mutex> lck(m_dataMutex);
-            *(std::next(m_contexts.begin(), static_cast<long>(id))) = errorMsgNoTable(data.at(1));
+            *(std::next(m_contexts.begin(), static_cast<long>(id))) = ERR_WRONG_FORMAT;
             return false;
         }
     }
     else if (data.at(0) == "TRUNCATE") {
-        if(data.at(1) == "A") {
+        if((data.size() == 2)) {
+            if(data.at(1) == "A") {
+                std::unique_lock<std::mutex> lck(m_dataMutex);
+                m_tableA.clear();
+            }
+            else if(data.at(1) == "B") {
+                std::unique_lock<std::mutex> lck(m_dataMutex);
+                m_tableB.clear();
+            }
+            else {
+                std::unique_lock<std::mutex> lck(m_dataMutex);
+                *(std::next(m_contexts.begin(), static_cast<long>(id))) = errorMsgNoTable(data.at(1));
+                return false;
+            }
+        } else {
             std::unique_lock<std::mutex> lck(m_dataMutex);
-            m_tableA.clear();            
-        }
-        else if(data.at(1) == "B") {
-            std::unique_lock<std::mutex> lck(m_dataMutex);
-            m_tableB.clear();
-        }
-        else {
-            std::unique_lock<std::mutex> lck(m_dataMutex);
-            *(std::next(m_contexts.begin(), static_cast<long>(id))) = errorMsgNoTable(data.at(1));
+            *(std::next(m_contexts.begin(), static_cast<long>(id))) = ERR_WRONG_FORMAT;
             return false;
         }
     }
